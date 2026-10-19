@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from .config import settings
 from .pipeline.orchestrator import humanize
@@ -17,12 +18,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-FRONTEND = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+
+# Serve styles.css, app.js, and any future assets (images, fonts) under /static
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 
 @app.get("/")
 async def index():
-    return FileResponse(FRONTEND)
+    return FileResponse(FRONTEND_DIR / "index.html")
 
 
 @app.get("/health")
@@ -36,5 +40,5 @@ async def humanize_endpoint(req: HumanizeRequest):
         raise HTTPException(status_code=400, detail="text is empty")
     try:
         return await humanize(req)
-    except Exception as e:  # surface provider errors to the client
+    except Exception as e:
         raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
